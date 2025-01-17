@@ -76,14 +76,17 @@ async function replay(strategy) {
         const txSamplePath = catanaConfig.transactionsPath;
         transactions = fetch.getAllTransactions(txSamplePath);
         console.log(chalk.bold.yellow(`> Replay all transactions in ${txSamplePath}`));
+        setup(async () =>
+            await runTest(transactions)
+        );
     }
-
-    setup(async () => await runTest(transactions));
+    else {
+        throw new Error("The selected strategy is not valid.")
+    }
 }
 
 /**
 * Run replay tests with a list of transactions belonging to a certain strategy
-* @param {String} strategyID - the ID of the replay strategy (e.g.: one, all, random-3, frequency-1)
 * @param {Array} transactions - the list of transactions to be replayed
 */
 async function runTest(transactions) {

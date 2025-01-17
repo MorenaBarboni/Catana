@@ -157,8 +157,6 @@ async function getChangedMappingSlots(storageLayoutWithValues, txHash, proxyAddr
  */
 function isBlackListed(sVar) {
     let blacklistedStateVarNames = catanaConfig.stateVarsBlacklist;
-    //let blacklistedContracts = ["@"] //usually indicates library
-    //if (blacklistedStateVarNames.includes(sVar.label) || blacklistedContracts.some(char => sVar.contract.startsWith(char))) {
     return blacklistedStateVarNames.includes(sVar.label)
 }
 
@@ -464,17 +462,7 @@ function decodeStruct(value, type, numberOfElements, parentSource, astId) {
  * @returns the decoded struct value
  */
 function decodeMapping(value, type, numberOfElements, parentSource, astId) {
-    return value;
-
-    const elementType = getMappingType(type);
-    if (!elementType || typeof value !== 'object') {
-        return "Decoded value N.A.";
-    }
-    let decodedValue = {};
-    for (const key in value) {
-        decodedValue[key] = decodeVariableValue(value[key], elementType, numberOfElements, parentSource, astId);
-    }
-    return decodedValue;
+    return value;   
 }
 
 /**
@@ -554,6 +542,23 @@ function getArrayType(typeDescription) {
     }
 }
 
+
+/**
+ * Determines the type of a mapping's elements
+ * @param {String} typeDescription - The type description string (e.g.: t_mapping(t_uint256,t_address))
+ * @returns the mapping element's type (e.g.: t_uint256) (or null)
+ */
+/*function getMappingType(typeDescription) {
+    const regex = /\(([^,]+),([^)]+)\)/;
+    const match = regex.exec(typeDescription);
+    // Extracting the second type if a match is found
+    if (match && match.length >= 3) {
+        return match[2].trim();
+    } else {
+        return null;
+    }
+}*/
+
 /**
  * Extracts the number of elements of a fixed array from its type attribute.
  * @param {string} typeDescription - The type description string (e.g.: t_array(t_uint256)3_storage)
@@ -574,27 +579,9 @@ function getFixedArrayLength(typeDescription) {
  * @returns the length of the dynamic array
  */
 function getDynamicArrayLength(value) {
-
     //The value in the starting slot of a dynamic array indicates its number of elements
     const size = decodeUint(value);
     return size;
-}
-
-
-/**
- * Determines the type of a mapping's elements
- * @param {String} typeDescription - The type description string (e.g.: t_mapping(t_uint256,t_address))
- * @returns the mapping element's type (e.g.: t_uint256) (or null)
- */
-function getMappingType(typeDescription) {
-    const regex = /\(([^,]+),([^)]+)\)/;
-    const match = regex.exec(typeDescription);
-    // Extracting the second type if a match is found
-    if (match && match.length >= 3) {
-        return match[2].trim();
-    } else {
-        return null;
-    }
 }
 
 /**
@@ -664,8 +651,6 @@ function extractStructNestedAttributeTypes(attributeType, parentSource) {
 
     return extractedAttributeTypes;
 }
-
-
 
 /**
  * Determines the astId of an EnumDefinition
@@ -913,14 +898,14 @@ function extractDynamicArrayElementSlots(dynamicArrayVar) {
 function extractMappingSlots(mappingVar) {
     //@todo this is just a placeholder for the actual mapping keys
     throw new Error("Mapping slots extraction currently not supported - no keys available")
-    let mappingKeys = [25];
+    /*let mappingKeys = [25];
     const abiCoder = new ethers.AbiCoder();
     const elementSlots = []
     mappingKeys.forEach(key => {
         const slotHash = ethers.keccak256(abiCoder.encode(['uint256', 'uint256'], [key, mappingVar.slot]));
         elementSlots.push(slotHash);
     });
-    return elementSlots;
+    return elementSlots;*/
 }
 
 /**

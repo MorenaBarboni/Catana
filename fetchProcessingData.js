@@ -22,9 +22,7 @@ async function fetchContractSourcesByAddress(contractAddress, contractDir) {
 	if (fetchedSourceCode === "") {
 		throw new Error(chalk.red("Source code for contract deployed @" + contractAddress + " not available."))
 	} else {
-		// @todo find a better way to perform this check when multiple sources are present - if fetchedSourceCode starts with {{, it contains multiple sources
 		if (fetchedSourceCode.startsWith("{{")) {
-			// @todo Not sure why the following line does not work. The current solution is just an hack ... we should revise how we process fetchedSourceCodes
 			let sources = JSON.parse((fetchedSourceCode.substring(1, fetchedSourceCode.length - 1))).sources;
 			for (let sourceKey in sources) {
 				//console.log(sourceKey + ": " + sources[sourceKey]);
@@ -52,9 +50,8 @@ async function fetchContractSourcesByAddress(contractAddress, contractDir) {
  * 
  */
 async function captureProxyTxs(size, startBlock = 1) {
-	//Endblock set to 20357000 for Erigon sync
 	let filteredTx = []
-	let txs = await etherscan.account.txlist(catanaConfig.DeployedProxyAddr, startBlock, 20357000, 1, 10000, 'desc');
+	let txs = await etherscan.account.txlist(catanaConfig.DeployedProxyAddr, startBlock, 99999999, 1, 10000, 'desc');
 	let txList = txs.result;
 
 	txList.forEach(tx => {
@@ -104,155 +101,6 @@ function getTransaction(txHash, txPath = null) {
 		throw new Error(chalk.red("> Hash \"" + txHash + "\" does not correspond to a valid transaction."));
 	}
 	return tx;
-}
-
-/**
- * Get the last N valid transaction from the blockchain.json sample and save them to file.
- * @param {Number} nTx - the number of transactions to extract
- * @param {String} [txPath=null]  - the path to the transaction's json (catanaConfig.transactionPath if null)
- * @returns lastNTxs
- */
-function getLastNTx(nTx, txPath = null) {
-	// Filter valid transactions (those where isError === "0")
-	const validTxs = verifyInitialWindow(nTx, txPath);
-
-	// Get last n transactions
-	let lastNTxs = validTxs.slice(0, nTx);
-
-	const fileName = `tx-sample-last.json`;
-	saveTxSampleJson(lastNTxs, fileName);
-	console.log(`Sample saved as ${fileName}`);
-
-	return lastNTxs;
-}
-
-
-/**
-* Get N random valid transaction from the blockchain.json sample and save them to file.
-* @param {Number} nTx the number of transactions to retrieve
-* @param {String} [txPath=null]  - the path to the transaction's json (catanaConfig.transactionPath if null)
-* @returns the extracted transactions
-*/
-function getRandomNTx(nTx, txPath = null) {
-	// Filter valid transactions (those where isError === "0")
-	const validTxs = verifyInitialWindow(nTx, txPath);
-
-	// Shuffle transactions
-	const shuffledTxs = validTxs.sort(() => 0.5 - Math.random());
-
-	// Get random n txs
-	let randomNTxs = shuffledTxs.slice(0, nTx);
-
-	const fileName = `tx-sample-random.json`;
-	saveTxSampleJson(randomNTxs, fileName);
-	console.log(`Sample saved as ${fileName}`);
-
-	return randomNTxs;
-}
-
-
-/**
- * Gets N valid transaction for each invoked function name from the blockchain.json sample and save them to file.
- * @param {Number} nTx the max number of transactions to retrieve for each invoked method
- * @param {String} [txPath=null]  - the path to the transaction's json (catanaConfig.transactionPath if null)
- * @returns the extracted transactions
- */
-function getUniqueNTx(nTx, txPath = null) {
-	// Filter valid transactions (those where isError === "0")
-	const validTxs = verifyInitialWindow(nTx, txPath);
-
-	// Shuffle transactions
-	const shuffledTxs = validTxs.sort(() => 0.5 - Math.random());
-
-	//Get unique n txs
-	let uniqueTxsByFunction = [];
-	shuffledTxs.forEach(tx => {
-		if (!(uniqueTxsByFunction.filter(e => e.functionName === tx.functionName).length > (nTx - 1)) && tx.isError === "0") {
-			uniqueTxsByFunction.push(tx);
-		}
-	});
-
-	const fileName = `tx-sample-random.json`;
-	saveTxSampleJson(uniqueTxsByFunction, fileName);
-	console.log(`Sample saved as ${fileName}`);
-
-	return uniqueTxsByFunction;
-}
-
-/**
- * Extracts transactions distributed proportionally based on the frequency of each transaction method.
- * @param {Number} nTx the number of transactions to extract
- * @param {String} [txPath=null]  - the path to the transaction's json (catanaConfig.transactionPath if null)
- * @returns the extracted transactions
- */
-function getFrequencyNTx(nTx, txPath = null) {
-
-	// Filter valid transactions (those where isError === "0")
-	const validTxs = verifyInitialWindow(nTx, txPath);
-
-	// Shuffle array
-	const shuffledTxs = validTxs.sort(() => 0.5 - Math.random());
-
-	// Calculate the frequency distribution of each transaction method
-	const freqDistribution = {};
-	shuffledTxs.forEach(tx => {
-		freqDistribution[tx.functionName] = (freqDistribution[tx.functionName] || 0) + 1;
-	});
-	//console.log("Distribution: ", freqDistribution)
-
-	// Calculate the number of transactions to extract for each method
-	const numTxPerMethod = {};
-	Object.keys(freqDistribution).forEach(method => {
-		numTxPerMethod[method] = Math.round((freqDistribution[method] / shuffledTxs.length) * nTx);
-	});
-
-	// Adjust the total number of transactions if rounding caused discrepancies
-	let totalTx = Object.values(numTxPerMethod).reduce((sum, count) => sum + count, 0);
-	while (totalTx < nTx) {
-		// Add remaining transactions to the most frequent method
-		const maxMethod = Object.keys(freqDistribution).reduce((a, b) => freqDistribution[a] > freqDistribution[b] ? a : b);
-		numTxPerMethod[maxMethod]++;
-		totalTx++;
-	}
-
-	// Extract the transactions
-	const frequencyBasedTxs = [];
-	Object.keys(numTxPerMethod).forEach(method => {
-		const methodTxs = shuffledTxs.filter(tx => tx.functionName === method && tx.isError === "0");
-		frequencyBasedTxs.push(...methodTxs.slice(0, numTxPerMethod[method]));
-	});
-	//Shuffle again
-	const shuffledFrequencyBasedTxs = frequencyBasedTxs.sort(() => 0.5 - Math.random());
-
-
-	const fileName = `tx-sample-frequency.json`;
-	saveTxSampleJson(shuffledFrequencyBasedTxs, fileName);
-	console.log(`Sample saved as ${fileName}`);
-
-	return shuffledFrequencyBasedTxs;
-}
-
-/**
- * Verifies the validity of the transaction window and cleans it of eventual invalid transactions.
- * @param {Number} nTx - the number of transactions to be extracted
- * @param {String} [txPath=null]  - the path to the transaction's json (catanaConfig.transactionPath if null)
- * @returns the window of successfully executed transactions
- */
-function verifyInitialWindow(nTx, txPath = null) {
-	// Get tx window
-	let rawTx = txPath === null ? fs.readFileSync(catanaConfig.transactionsPath) : fs.readFileSync(txPath);
-	let jsonTx = JSON.parse(rawTx);
-	if (nTx > jsonTx.length || nTx <= 0) {
-		throw new Error("Please specify a valid number of transactions - " + nTx + " is not valid")
-	}
-
-	// Filter valid transactions (those where isError === "0")
-	const validTxs = jsonTx.filter(e => e.isError === "0");
-	if (nTx > validTxs.length) {
-		throw new Error("Not enough valid transactions to create the sample(s) - (" + nTx + " required, " + validTxs.length + " available)");
-	}
-
-	return validTxs;
 }
 
 /**
@@ -355,8 +203,6 @@ async function getABI(contractSourcePath, contractName) {
 	return contractArtifact.abi;
 }
 
-
-
 /**
 * Clean the content of a directory without deleting it
 */
@@ -386,18 +232,14 @@ function deleteDir(dirName) {
 module.exports = {
 	cleanDir: cleanDir,
 	deleteDir: deleteDir,
-	fetchContractSourcesByAddress: fetchContractSourcesByAddress,
 	getABI: getABI,
-	getAllTransactions: getAllTransactions,
 	getBytecode: getBytecode,
-	readBuildInfoFiles: readBuildInfoFiles,
+	fetchContractSourcesByAddress: fetchContractSourcesByAddress,
+	captureProxyTxs: captureProxyTxs,
+	getAllTransactions: getAllTransactions,
 	getDeployedContractSourcePath: getDeployedContractSourcePath,
 	getFileName: getFileName,
-	getFrequencyNTx:getFrequencyNTx,
-	getLastNTx:getLastNTx,
-	captureProxyTxs: captureProxyTxs,
-	getRandomNTx:getRandomNTx,
 	getRootDir: getRootDir,
 	getTransaction: getTransaction,
-	getUniqueNTx:getUniqueNTx
+	readBuildInfoFiles: readBuildInfoFiles,
 };
