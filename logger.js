@@ -172,14 +172,14 @@ function getTimestamp(duration) {
 */
 function parseReplayStatusCode(statusCode) {
   switch (statusCode) {
-    case 0: return "success-passed";
-    case 1: return "success-failed";
-    case 2: return "error-timeout-on-deployed";
-    case 3: return "error-timeout-on-upgraded";
-    case 4: return "error-missing-outcome";
-    case 10: return "not-executed";    //uncompilable mutant
-    case null: return "not-executed";
-    default: return "error-unknown";
+    case 0: return "success-passed"; //succesfful replay session without changes
+    case 1: return "success-failed"; //succesfful replay session with changes
+    case 2: return "error-timeout-on-deployed"; //timeout on original contract
+    case 3: return "error-timeout-on-upgraded"; //timeout on upgraded contract
+    case 4: return "error-missing-outcome"; //error in the transaction outcome
+    case 10: return "not-executed"; //uncompilable contract
+    case null: return "not-executed"; // replay session not executed
+    default: return "error-unknown";  // unknown error
   }
 }
 
